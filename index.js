@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFT Audio Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+```
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 40px;
+    }
+
+    h1 {
+        color: #333;
+        margin-bottom: 30px;
+        text-align: center;
+        font-size: 2em;
+    }
+
+    .upload-section {
+        background: #f8f9fa;
+        border: 2px dashed #667eea;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        margin-bottom: 30px;
+        transition: all 0.3s;
+    }
+
+    .upload-section:hover {
+        border-color: #764ba2;
+        background: #f0f1ff;
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .upload-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 40px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-block;
+        transition: transform 0.2s;
+    }
+
+    .upload-button:hover {
+        transform: translateY(-2px);
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    button:hover:not(:disabled) {
+        background: #5568d3;
+        transform: translateY(-1px);
+    }
+
+    button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+
+    .canvas-container {
+        background: #1a1a2e;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    canvas {
+        width: 100%;
+        height: auto;
+        border-radius: 8px;
+    }
+
+    .info {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #667eea30;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #333;
+    }
+
+    .download-section {
+        text-align: center;
+        margin-top: 30px;
+    }
+
+    #downloadBtn {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        font-size: 16px;
+        padding: 15px 40px;
+    }
+
+    #downloadBtn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #0e8577 0%, #2dd968 100%);
+    }
+
+    .file-name {
+        color: #667eea;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+</style>
+```
+
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 FFT Audio Analyzer</h1>
+
+```
+    <div class="upload-section">
+        <div class="file-input-wrapper">
+            <div class="upload-button">📁 Select File</div>
+            <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.mp4,.avi,.mov,.webm">
+        </div>
+        <div class="file-name" id="fileName"></div>
+    </div>
+
+    <div class="info">
+        <strong>📌 How to use:</strong> Select an audio file (mp3, wav, etc.) or video file (mp4, avi, etc.) and press the play button. FFT analysis will be displayed in real-time.
+    </div>
+
+    <div class="controls">
+        <button id="playBtn" disabled>▶️ Play</button>
+        <button id="pauseBtn" disabled>⏸️ Pause</button>
+        <button id="stopBtn" disabled>⏹️ Stop</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-label">Playback Time</div>
+            <div class="stat-value" id="timeDisplay">0:00 / 0:00</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Peak Frequency</div>
+            <div class="stat-value" id="peakFreq">- Hz</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Average Amplitude</div>
+            <div class="stat-value" id="avgAmp">- dB</div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="fftCanvas" width="1000" height="400"></canvas>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="avgCanvas" width="1000" height="400"></canvas>
+    </div>
+
+    <div class="download-section">
+        <button id="downloadBtn" disabled>💾 Download Average Spectrum Image</button>
+    </div>
+</div>
+
+<script>
+    let audioContext;
+    let analyser;
+    let dataArray;
+    let bufferLength;
+    let audioElement;
+    let source;
+    let animationId;
+    let averageSpectrum = null;
+    let spectrumCount = 0;
+
+    const fileInput = document.getElementById('fileInput');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const fftCanvas = document.getElementById('fftCanvas');
+    const avgCanvas = document.getElementById('avgCanvas');
+    const fftCtx = fftCanvas.getContext('2d');
+    const avgCtx = avgCanvas.getContext('2d');
+    const fileName = document.getElementById('fileName');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const peakFreq = document.getElementById('peakFreq');
+    const avgAmp = document.getElementById('avgAmp');
+
+    fileInput.addEventListener('change', handleFileSelect);
+    playBtn.addEventListener('click', play);
+    pauseBtn.addEventListener('click', pause);
+    stopBtn.addEventListener('click', stop);
+    downloadBtn.addEventListener('click', downloadAverage);
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        fileName.textContent = `Selected: ${file.name}`;
+        
+        // Reset
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.src = '';
+        }
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+        }
+
+        // Initialize Audio Context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 2048;
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        // Reset average spectrum
+        averageSpectrum = new Float32Array(bufferLength);
+        spectrumCount = 0;
+
+        // Create Audio Element
+        audioElement = new Audio();
+        audioElement.src = URL.createObjectURL(file);
+        
+        source = audioContext.createMediaElementSource(audioElement);
+        source.connect(analyser);
+        analyser.connect(audioContext.destination);
+
+        audioElement.addEventListener('loadedmetadata', () => {
+            playBtn.disabled = false;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+            updateTimeDisplay();
+        });
+
+        audioElement.addEventListener('timeupdate', updateTimeDisplay);
+        audioElement.addEventListener('ended', () => {
+            stop();
+            drawAverageSpectrum();
+            downloadBtn.disabled = false;
+        });
+    }
+
+    function play() {
+        if (audioElement) {
+            audioElement.play();
+            visualize();
+        }
+    }
+
+    function pause() {
+        if (audioElement) {
+            audioElement.pause();
+            cancelAnimationFrame(animationId);
+        }
+    }
+
+    function stop() {
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            cancelAnimationFrame(animationId);
+            updateTimeDisplay();
+        }
+    }
+
+    function visualize() {
+        animationId = requestAnimationFrame(visualize);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        // Add to average spectrum
+        for (let i = 0; i < bufferLength; i++) {
+            averageSpectrum[i] += dataArray[i];
+        }
+        spectrumCount++;
+
+        drawFFT();
+        updateStats();
+    }
+
+    function drawFFT() {
+        const width = fftCanvas.width;
+        const height = fftCanvas.height;
+
+        fftCtx.fillStyle = 'rgb(20, 20, 40)';
+        fftCtx.fillRect(0, 0, width, height);
+
+        // Draw grid
+        fftCtx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+        fftCtx.lineWidth = 1;
+        for (let i = 0; i <= 10; i++) {
+            const y = (height / 10) * i;
+            fftCtx.beginPath();
+            fftCtx.moveTo(0, y);
+            fftCtx.lineTo(width, y);
+            fftCtx.stroke();
+        }
+
+        // Draw FFT spectrum
+        const barWidth = width / bufferLength;
+        let x = 0;
+
+        const gradient = fftCtx.createLinearGradient(0, height, 0, 0);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(0.5, '#764ba2');
+        gradient.addColorStop(1, '#f093fb');
+
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (dataArray[i] / 255) * height;
+
+            fftCtx.fillStyle = gradient;
+            fftCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+
+            x += barWidth;
+        }
+
+        // Labels
+        fftCtx.fillStyle = 'white';
+        fftCtx.font = '14px sans-serif';
+        fftCtx.fillText('Real-time FFT Spectrum', 10, 25);
+        fftCtx.fillText('0 Hz', 10, height - 10);
+        
+        const nyquist = audioContext.sampleRate / 2;
+        fftCtx.fillText(`${Math.round(nyquist)} Hz`, width - 80, height - 10);
+    }
+
+    function drawAverageSpectrum() {
+        if (spectrumCount === 0) return;
+
+        const width = avgCanvas.width;
+        const height = avgCanvas.height;
+
+        avgCtx.fillStyle = 'rgb(20, 20, 40)';
+        avgCtx.fillRect(0, 0, width, height);
+
+        // Grid
+        avgCtx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+        avgCtx.lineWidth = 1;
+        for (let i = 0; i <= 10; i++) {
+            const y = (height / 10) * i;
+            avgCtx.beginPath();
+            avgCtx.moveTo(0, y);
+            avgCtx.lineTo(width, y);
+            avgCtx.stroke();
+        }
+
+        // Calculate average spectrum
+        const avgData = new Float32Array(bufferLength);
+        for (let i = 0; i < bufferLength; i++) {
+            avgData[i] = averageSpectrum[i] / spectrumCount;
+        }
+
+        // Draw
+        const barWidth = width / bufferLength;
+        let x = 0;
+
+        const gradient = avgCtx.createLinearGradient(0, height, 0, 0);
+        gradient.addColorStop(0, '#11998e');
+        gradient.addColorStop(0.5, '#38ef7d');
+        gradient.addColorStop(1, '#a8ff78');
+
+        avgCtx.beginPath();
+        avgCtx.moveTo(0, height);
+
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (avgData[i] / 255) * height;
+            avgCtx.lineTo(x, height - barHeight);
+            x += barWidth;
+        }
+
+        avgCtx.lineTo(width, height);
+        avgCtx.closePath();
+        avgCtx.fillStyle = gradient;
+        avgCtx.fill();
+
+        // Add stroke line
+        avgCtx.strokeStyle = '#ffffff';
+        avgCtx.lineWidth = 2;
+        avgCtx.beginPath();
+        x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (avgData[i] / 255) * height;
+            if (i === 0) {
+                avgCtx.moveTo(x, height - barHeight);
+            } else {
+                avgCtx.lineTo(x, height - barHeight);
+            }
+            x += barWidth;
+        }
+        avgCtx.stroke();
+
+        // Labels
+        avgCtx.fillStyle = 'white';
+        avgCtx.font = 'bold 16px sans-serif';
+        avgCtx.fillText('Average Power Spectrum', 10, 25);
+        avgCtx.font = '14px sans-serif';
+        avgCtx.fillText('0 Hz', 10, height - 10);
+        
+        const nyquist = audioContext.sampleRate / 2;
+        avgCtx.fillText(`${Math.round(nyquist)} Hz`, width - 80, height - 10);
+    }
+
+    function updateStats() {
+        // Detect peak frequency
+        let maxIndex = 0;
+        let maxValue = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            if (dataArray[i] > maxValue) {
+                maxValue = dataArray[i];
+                maxIndex = i;
+            }
+        }
+        const nyquist = audioContext.sampleRate / 2;
+        const peakFrequency = (maxIndex / bufferLength) * nyquist;
+        peakFreq.textContent = `${Math.round(peakFrequency)} Hz`;
+
+        // Average amplitude (dB)
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const avg = sum / bufferLength;
+        const avgDb = 20 * Math.log10(avg / 255);
+        avgAmp.textContent = `${avgDb.toFixed(1)} dB`;
+    }
+
+    function updateTimeDisplay() {
+        if (!audioElement) return;
+        const current = formatTime(audioElement.currentTime);
+        const duration = formatTime(audioElement.duration);
+        timeDisplay.textContent = `${current} / ${duration}`;
+    }
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function downloadAverage() {
+        const link = document.createElement('a');
+        link.download = 'average_spectrum.png';
+        link.href = avgCanvas.toDataURL();
+        link.click();
+    }
+</script>
+```
+
+</body>
+</html>
